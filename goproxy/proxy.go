@@ -28,7 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ouqiang/goproxy/cert"
+	"github.com/th997/goproxy-tls/cert"
 )
 
 const (
@@ -55,6 +55,7 @@ type options struct {
 	delegate         Delegate
 	decryptHTTPS     bool
 	certCache        cert.Cache
+	rootCert         *cert.Certificate
 	transport        *http.Transport
 }
 
@@ -82,10 +83,18 @@ func WithTransport(t *http.Transport) Option {
 }
 
 // WithDecryptHTTPS 中间人代理, 解密HTTPS, 需实现证书缓存接口
-func WithDecryptHTTPS(c cert.Cache) Option {
+func WithDecryptHTTPS(cache cert.Cache) Option {
 	return func(opt *options) {
 		opt.decryptHTTPS = true
-		opt.certCache = c
+		opt.certCache = cache
+	}
+}
+
+// WithRootCert 中间人代理, 解密HTTPS, 指定根证书
+func WithRootCert(rootCert *cert.Certificate) Option {
+	return func(opt *options) {
+		opt.decryptHTTPS = true
+		opt.rootCert = rootCert
 	}
 }
 
@@ -119,7 +128,11 @@ func New(opt ...Option) *Proxy {
 	p.delegate = opts.delegate
 	p.decryptHTTPS = opts.decryptHTTPS
 	if p.decryptHTTPS {
-		p.cert = cert.NewCertificate(opts.certCache)
+		if opts.rootCert != nil {
+			p.cert = opts.rootCert
+		} else {
+			p.cert = cert.NewCertificate(opts.certCache)
+		}
 	}
 	p.transport = opts.transport
 	p.transport.DisableKeepAlives = opts.disableKeepAlive

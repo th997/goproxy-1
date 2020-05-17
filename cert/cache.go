@@ -15,10 +15,31 @@
 // Package cert HTTPS证书
 package cert
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+	"sync"
+)
 
 // Cache 证书缓存接口
 type Cache interface {
 	Set(host string, c *tls.Certificate)
 	Get(host string) *tls.Certificate
+}
+
+// 实现证书缓存接口
+type DefaultCache struct {
+	m sync.Map
+}
+
+func (c *DefaultCache) Set(host string, cert *tls.Certificate) {
+	c.m.Store(host, cert)
+}
+
+func (c *DefaultCache) Get(host string) *tls.Certificate {
+	v, ok := c.m.Load(host)
+	if !ok {
+		return nil
+	}
+
+	return v.(*tls.Certificate)
 }

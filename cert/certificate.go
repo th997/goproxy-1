@@ -17,6 +17,7 @@ package cert
 
 import (
 	crand "crypto/rand"
+	"io/ioutil"
 
 	"crypto/rsa"
 	"crypto/tls"
@@ -124,7 +125,7 @@ var (
 	rootKey *rsa.PrivateKey
 )
 
-func init() {
+func initConfig() {
 	var err error
 	rootCA, err = loadRootCA()
 	if err != nil {
@@ -142,6 +143,24 @@ type Certificate struct {
 }
 
 func NewCertificate(cache Cache) *Certificate {
+	initConfig()
+	return &Certificate{
+		cache: cache,
+	}
+}
+
+// NewCertificateWithCaFile 加载根证书
+func NewCertificateWithCaFile(cache Cache, rootCrtPath, rootKeyPath string) *Certificate {
+	var err error
+	rootCAPem, err = ioutil.ReadFile(rootCrtPath)
+	if err != nil {
+		panic(fmt.Errorf("读取根证书文件失败: %s", err))
+	}
+	rootKeyPem, err = ioutil.ReadFile(rootKeyPath)
+	if err != nil {
+		panic(fmt.Errorf("读取根证书私钥文件失败: %s", err))
+	}
+	initConfig()
 	return &Certificate{
 		cache: cache,
 	}
@@ -219,7 +238,7 @@ func (c *Certificate) template(host string) *x509.Certificate {
 		BasicConstraintsValid: true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageDataEncipherment,
-		EmailAddresses:        []string{"qingqianludao@gmail.com"},
+		//EmailAddresses:        []string{"qingqianludao@gmail.com"},
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
